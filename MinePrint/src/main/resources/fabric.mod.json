@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "mineprint",
+  "version": "${version}",
+  "name": "MinePrint",
+  "description": "A mod designed for users to generate STL files of their minecraft builds.",
+  "authors": [],
+  "contact": {},
+  "license": "GPL-3.0",
+  "icon": "assets/mineprint/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "fabric-datagen": [
+      "org.ktpMinePrint.mineprint.client.MineprintDataGenerator"
+    ],
+    "client": [
+      "org.ktpMinePrint.mineprint.client.MineprintClient"
+    ],
+    "main": [
+      "org.ktpMinePrint.mineprint.Mineprint"
+    ]
+  },
+  "mixins": [
+    "mineprint.mixins.json",
+    {
+      "config": "mineprint.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric-api": "*",
+    "minecraft": "${minecraft_version}"
+  }
+}
