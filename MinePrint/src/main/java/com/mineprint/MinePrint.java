@@ -1,7 +1,9 @@
 package com.mineprint;
 
+import com.mineprint.item.ModItems;
+import com.mineprint.event.StickEventHandler;
+import com.mineprint.command.ToSTLCommand;
 import net.fabricmc.api.ModInitializer;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,6 +21,9 @@ public class MinePrint implements ModInitializer {
 		// However, some things (like resources) may still be uninitialized.
 		// Proceed with mild caution.
 
-		LOGGER.info("Hello Fabric world!");
+		ModItems.initialize();
+		StickEventHandler.register();
+		ToSTLCommand.register();
+		LOGGER.info("MinePrint initialized");
 	}
 }
