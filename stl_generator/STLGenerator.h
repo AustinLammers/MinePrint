@@ -4,7 +4,7 @@
 #define DEBUG(...) printf(__VA_ARGS__)
 
 #define CSV_MAX_LINE_LENGTH 128
-#define CSV_COLUMNS 3
+#define CSV_COLUMNS 5
 
 /* Face identifier definitions */
 #define BLOCK_FACE_PLUS_X (0x1 << 0)

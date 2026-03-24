@@ -46,7 +46,7 @@ blockNode_t* ingestFile(char* filepath) {
 }
 
 int extractBlockData(block_t* block, char* csvLine) {
-    if(strlen(csvLine) <= CSV_COLUMNS) {
+    if(strlen(csvLine) <= CSV_COLUMNS) { //simple check to see if our row makes any sense
         return 0;
     }
 
