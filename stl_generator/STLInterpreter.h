@@ -14,11 +14,13 @@ int printTriangleVerticiesFromFile(char* filename);
 //strips 80 byte header and returns the number of triangles in the file
 int readHeader(FILE* file);
 
+#pragma pack(1)
 typedef struct {
     float normalVec[3];
     float verticies[3][3];
     unsigned short attrByteCount;
 } triangle_t;
+#pragma pack()
 
 
 #endif

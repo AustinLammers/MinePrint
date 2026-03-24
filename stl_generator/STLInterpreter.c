@@ -16,7 +16,7 @@ int main(int argc, char** argv) {
 
     int numTriangles = readHeader(stlFile);
 
-    printf("reading %d triangles...\n", numTriangles);
+    printf("reading %d triangles of size %d bytes...\n", numTriangles, sizeof(triangle_t));
 
     triangle_t bytes = {0};
     int trianglesRead = 0;
@@ -31,9 +31,12 @@ int main(int argc, char** argv) {
         }
     }
 
+
+
     if(trianglesRead != numTriangles) {
-        printf("invalid number of triangle read:\n\texpected: %d\n\tactual: %d\n", numTriangles, trianglesRead);
+        printf("invalid number of triangle read, possible file corruption:\n\texpected: %d\n\tactual: %d\n", numTriangles, trianglesRead);
     }
+
 
     return trianglesRead;
 
