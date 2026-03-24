@@ -1,0 +1,24 @@
+{
+  "stats": {
+    "minecraft:used": {
+      "minecraft:diamond_block": 1,
+      "minecraft:amethyst_block": 5,
+      "minecraft:poppy": 1,
+      "minecraft:redstone": 1,
+      "minecraft:jungle_log": 2,
+      "minecraft:spruce_door": 1,
+      "minecraft:waxed_copper_block": 1
+    },
+    "minecraft:custom": {
+      "minecraft:time_since_rest": 1157,
+      "minecraft:total_world_time": 1895,
+      "minecraft:leave_game": 1,
+      "minecraft:fly_one_cm": 1308,
+      "minecraft:sneak_time": 45,
+      "minecraft:play_time": 1157,
+      "minecraft:jump": 1,
+      "minecraft:time_since_death": 1157
+    }
+  },
+  "DataVersion": 4671
+}
