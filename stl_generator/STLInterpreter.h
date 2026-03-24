@@ -8,12 +8,6 @@
 #define STL_NUM_TRIANGLE_VERTICIES 3
 #define STL_NUM_VERTEX_DIMENSIONS 3
 
-//prints out all the triangles found in the file
-int printTriangleVerticiesFromFile(char* filename);
-
-//strips 80 byte header and returns the number of triangles in the file
-int readHeader(FILE* file);
-
 #pragma pack(1)
 typedef struct {
     float normalVec[3];
@@ -21,6 +15,17 @@ typedef struct {
     unsigned short attrByteCount;
 } triangle_t;
 #pragma pack()
+
+//prints out all the triangles found in the file
+int printTriangleVerticiesFromFile(char* filename);
+
+//strips 80 byte header and returns the number of triangles in the file
+int readHeader(FILE* file);
+
+//prints the bytes of the triangle struct
+void printBytes(triangle_t bytes);
+
+
 
 
 #endif

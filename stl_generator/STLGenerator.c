@@ -50,6 +50,6 @@ int extractBlockData(block_t* block, char* csvLine) {
         return 0;
     }
 
-    return sscanf(csvLine, "%d, %d, %d", &block->x, &block->y, &block->z);
+    return sscanf(csvLine, "%s, %d, %d", &block->x, &block->y, &block->z);
 
 }

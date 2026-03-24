@@ -25,6 +25,8 @@ int main(int argc, char** argv) {
         trianglesRead++;
 
         printf("triangle %d:\n", trianglesRead);
+        printf("\tbytes:\n\t\t");
+        printBytes(bytes);
         printf("\tnormal:\n\t\tx: %f\n\t\ty: %f\n\t\tz: %f\n", bytes.normalVec[0], bytes.normalVec[1], bytes.normalVec[2]);
         for (int i = 0; i < STL_NUM_TRIANGLE_VERTICIES; i++) {
             printf("\tvertex %d:\n\t\tx: %f\n\t\ty: %f\n\t\tz: %f\n", i, bytes.verticies[i][0], bytes.verticies[i][1], bytes.verticies[i][2]);
@@ -50,4 +52,14 @@ int readHeader(FILE* file) {
     fread(&num, sizeof(num), 1, file);
 
     return num;
+}
+
+void printBytes(triangle_t bytes) {
+
+    char* buf = (char*) &bytes;
+    printf("{ ");
+    for (int i = 0; i < sizeof(bytes); i++) {
+        printf("0x%hhx, ", buf[i]);
+    }
+    printf("\b\b }\n");
 }

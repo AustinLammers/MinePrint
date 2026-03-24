@@ -40,4 +40,5 @@ int extractBlockData(block_t* block, char* csvLine);
 /* Get the renderable faces for each block, returns the number of faces populated */
 int calculateRenderedFaces(blockNode_t * list);
 
+
 #endif
