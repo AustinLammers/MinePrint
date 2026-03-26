@@ -14,7 +14,7 @@ public class BlockMetadata {
 
     public String serialize() {
         StringBuilder sb = new StringBuilder();
-        String[] names = {"N", "S", "E", "W", "U", "D"};
+        String[] names = {"D", "U", "N", "S", "W", "E"};
         for (int i = 0; i < 6; i++) {
             if (i > 0) sb.append("|");
             sb.append(names[i]).append(":").append(openFaces[i] ? "1" : "0");
