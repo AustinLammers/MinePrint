@@ -20,6 +20,6 @@ public class BlockEntry {
              + normalizedPos.getX() + ","
              + normalizedPos.getY() + ","
              + normalizedPos.getZ() + ","
-             + metadata.serialize();
+             + metadata.toDataString();
     }
 }

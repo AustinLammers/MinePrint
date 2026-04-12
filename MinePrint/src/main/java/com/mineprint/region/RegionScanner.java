@@ -4,57 +4,66 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.SlabBlock;
+import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.Half;
+import net.minecraft.world.level.block.state.properties.SlabType;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Queue;
-import java.util.Set;
 
 public class RegionScanner {
 
     public static List<BlockEntry> scan(Level world, BlockRegion region) {
         List<BlockEntry> results = new ArrayList<>();
-        Set<BlockPos> visited = new HashSet<>();
-        Queue<BlockPos> queue = new ArrayDeque<>();
 
-        // run a BFS starting from the minimum corner.
-        queue.add(region.min);
-        visited.add(region.min);
+        for (int y = region.min.getY(); y <= region.max.getY(); y++) {
+            for (int x = region.min.getX(); x <= region.max.getX(); x++) {
+                for (int z = region.min.getZ(); z <= region.max.getZ(); z++) {
 
-        while (!queue.isEmpty()) {
-            BlockPos current = queue.poll();
+                    BlockPos current = new BlockPos(x, y, z);
+                    BlockState state = world.getBlockState(current);
 
-            // get the blocks ID.
-            BlockState state = world.getBlockState(current);
-            String blockId = BuiltInRegistries.BLOCK
-                    .getKey(state.getBlock())
-                    .toString();
+                    // Get block ID
+                    String blockId = BuiltInRegistries.BLOCK
+                            .getKey(state.getBlock())
+                            .toString();
 
-            // build our metadata by checking each block face to see if it's open.
-            BlockMetadata meta = new BlockMetadata();
-            Direction[] directions = Direction.values();
-            for (int i = 0; i < directions.length; i++) {
-                BlockPos neighbor = current.relative(directions[i]);
-                if (!region.contains(neighbor)) {
-                    meta.openFaces[i] = true;
-                } else {
-                    meta.openFaces[i] = world.getBlockState(neighbor).isAir();
-                }
-            }
+                    // Build metadata
+                    BlockMetadata meta = new BlockMetadata();
 
-            // normalize and store our data.
-            BlockPos normalized = region.normalize(current);
-            results.add(new BlockEntry(normalized, blockId, meta));
+                    // Face openness
+                    Direction[] directions = Direction.values();
+                    for (int i = 0; i < directions.length; i++) {
+                        BlockPos neighbor = current.relative(directions[i]);
+                        if (!region.contains(neighbor)) {
+                            meta.openFaces[i] = true;
+                        } else {
+                            meta.openFaces[i] = world.getBlockState(neighbor).isAir();
+                        }
+                    }
 
-            // queue unvisited neighbors inside our region.
-            for (Direction dir : Direction.values()) {
-                BlockPos neighbor = current.relative(dir);
-                if (region.contains(neighbor) && !visited.contains(neighbor)) {
-                    visited.add(neighbor);
-                    queue.add(neighbor);
+                    // Shape detection
+                    if (state.getBlock() instanceof StairBlock) {
+                        meta.shapeType = BlockMetadata.ShapeType.STAIR;
+                        Direction facing = state.getValue(StairBlock.FACING);
+                        meta.stairFacing = facing.getName();
+                        Half half = state.getValue(StairBlock.HALF);
+                        meta.stairHalf = half.getSerializedName();
+
+                    } else if (state.getBlock() instanceof SlabBlock) {
+                        SlabType slabType = state.getValue(SlabBlock.TYPE);
+                        meta.shapeType = switch (slabType) {
+                            case BOTTOM -> BlockMetadata.ShapeType.SLAB_BOTTOM;
+                            case TOP    -> BlockMetadata.ShapeType.SLAB_TOP;
+                            case DOUBLE -> BlockMetadata.ShapeType.SLAB_DOUBLE;
+                        };
+                    }
+
+                    // Normalize and store
+                    BlockPos normalized = region.normalize(current);
+                    results.add(new BlockEntry(normalized, blockId, meta));
                 }
             }
         }
