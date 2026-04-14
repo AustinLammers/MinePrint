@@ -46,7 +46,7 @@ blockNode_t* ingestFile(char* filepath) {
 
         int cols = extractBlockData(&block->info, line);
 
-        if (cols != CSV_COLUMNS && cols != -1) {
+        if (cols != CSV_COLUMNS + CSV_METADATA_FIELDS && cols != -1) {
             printf("error processing line %d in file\n", currline); 
             printf("\tproc'd errant number of cols: %d\n", cols);
             DEBUG("\tline=%s\n", line);
@@ -83,10 +83,22 @@ int extractBlockData(block_t* block, char* csvLine) {
     DEBUG("extracting data from line '%s'\n", csvLine);
 
     char facesString[CSV_FACES_STRING_LENGTH] = {0};
+    char shapeString[CSV_FACES_STRING_LENGTH] = {0};
+    char facingString[CSV_FACES_STRING_LENGTH] = {0};
+    char halfString[CSV_FACES_STRING_LENGTH] = {0};
+
     int status = sscanf(csvLine, "%[^,],%d,%d,%d,%s", block->blockName, &block->x, &block->y, &block->z, facesString);
 
-    if (status != CSV_COLUMNS) {
-        printf("failed to extract data from line '%s'\n\textracted %d cols\n", csvLine, status);
+    char* metadata = strstr(facesString, "||");
+    metadata += 2;
+    DEBUG("meta: '%s'\n", metadata);
+
+    int metaStatus = sscanf(metadata, "shape:%[^|]|facing:%[^|]|half:%s", shapeString, facingString, halfString);
+
+    status += metaStatus;
+
+    if (status != CSV_COLUMNS + CSV_METADATA_FIELDS) {
+        printf("failed to extract data from line '%s'\n\textracted %d cols\n\tmetadata: '%s'\n\tshape: '%s'\n\tfacing: '%s'\n\thalf: '%s'\n", csvLine, status, metadata, shapeString, facingString, halfString);
         return status;
     }
 
@@ -94,16 +106,37 @@ int extractBlockData(block_t* block, char* csvLine) {
         return -1;
     }
 
-    block->faces = facesToChar(facesString);
+    if (strncmp("SLAB_BOTTOM", shapeString, sizeof(shapeString)) == 0) {
+        block->type = BLOCK_TYPE_SLAB_BOT;
+    }
+    else if (strncmp("SLAB_TOP", shapeString, sizeof(shapeString)) == 0) {
+        block->type = BLOCK_TYPE_SLAB_TOP;
+    }
+    else if (strncmp("STAIR", shapeString, sizeof(shapeString)) == 0) {
+        if(strncmp("top", halfString, CSV_FACES_STRING_LENGTH) == 0) {
+            block->type = BLOCK_TYPE_STAIRS_TOP;
+        }
+        else {
+            block->type = BLOCK_TYPE_STAIRS_BOT;
+        }
+
+        block->faces = stairDirectionToFaces(facingString);
+    }
+    else {
+        block->type = BLOCK_TYPE_BLOCK;
+        block->faces = getFaces(facesString);
+    }
+
+    
     DEBUG("\tfaces: %d\n", block->faces);
     return status;
 
 }
 
-unsigned char facesToChar(char* string) {
+unsigned char getFaces(char* string) {
     char facesArr[COORDS_NUM_DIRECTIONS] = {0};
 
-    int status = sscanf(string, "D:%hhd|U:%hhd|N:%hhd|S:%hhd|W:%hhd|E:%hhd", &facesArr[0], &facesArr[1], &facesArr[2], &facesArr[3], &facesArr[4], &facesArr[5]);
+    int status = sscanf(string, "D:%hhd|U:%hhd|N:%hhd|S:%hhd|W:%hhd|E:%hhd|", &facesArr[0], &facesArr[1], &facesArr[2], &facesArr[3], &facesArr[4], &facesArr[5]);
 
     return (facesArr[0] << BLOCK_FACE_PLUS_Z_SHIFT) |
             (facesArr[1] << BLOCK_FACE_MINUS_Z_SHIFT) |
@@ -112,6 +145,22 @@ unsigned char facesToChar(char* string) {
             (facesArr[4] << BLOCK_FACE_MINUS_X_SHIFT) |
             (facesArr[5] << BLOCK_FACE_PLUS_X_SHIFT);
 }
+
+unsigned char stairDirectionToFaces(char* string) {
+    if(strncmp("north", string, CSV_FACES_STRING_LENGTH) == 0) {
+        return MC_NORTH_FACE;
+    }
+    else if (strncmp("east", string, CSV_FACES_STRING_LENGTH) == 0) {
+        return MC_EAST_FACE;
+    }
+    else if (strncmp("south", string, CSV_FACES_STRING_LENGTH) == 0) {
+        return MC_SOUTH_FACE;
+    }
+    else if (strncmp("west", string, CSV_FACES_STRING_LENGTH) == 0) {
+        return MC_WEST_FACE;
+    }
+}
+
 
 void adjustFacePosition(triangle_t* face, block_t blockInfo ){
     for (int i = 0; i < STL_TRIANGLES_PER_FACE; i++) {
@@ -128,6 +177,53 @@ void renderFace(block_t blockInfo, const char* template, FILE* file) {
     memcpy(face, template, sizeof(face));
     adjustFacePosition(face, blockInfo);
     fwrite((void*) face, sizeof(char), sizeof(face), file);
+}
+
+void adjustObjPosition(char* obj, block_t blockInfo ){
+
+    triangle_t* triangles = (triangle_t* ) obj;
+
+    if(blockInfo.type == BLOCK_TYPE_STAIRS_TOP || BLOCK_TYPE_STAIRS_BOT) {
+        for (int i = 0; i < STL_MC_STAIRS_NUM_TRIANGLES; i++) {
+            for(int j = 0; j < STL_NUM_TRIANGLE_VERTICIES; j++) {
+                triangles[i].verticies[j][0] += blockInfo.x * STL_EDGE_LENGTH;
+                triangles[i].verticies[j][1] += blockInfo.y * STL_EDGE_LENGTH;
+                triangles[i].verticies[j][2] += blockInfo.z * STL_EDGE_LENGTH;
+
+                if(blockInfo.faces != BLOCK_FACE_MINUS_Y) {
+                    //TODO: rotate
+                }
+
+                if(blockInfo.type == BLOCK_TYPE_STAIRS_TOP) {
+                    //TODO: Rotate
+                }
+            }
+        }    
+    }
+    else if (blockInfo.type == BLOCK_TYPE_SLAB_TOP || BLOCK_TYPE_SLAB_BOT) {
+        for (int i = 0; i < STL_MC_SLAB_NUM_TRIANGLES; i++) {
+                    for(int j = 0; j < STL_NUM_TRIANGLE_VERTICIES; j++) {
+                        triangles[i].verticies[j][0] += blockInfo.x * STL_EDGE_LENGTH;
+                        triangles[i].verticies[j][1] += blockInfo.y * STL_EDGE_LENGTH;
+                        triangles[i].verticies[j][2] += blockInfo.z * STL_EDGE_LENGTH;
+
+                        if (blockInfo.type == BLOCK_TYPE_SLAB_TOP) {
+                            //move slab up half of a block
+                            triangles[i].verticies[j][2] += STL_EDGE_LENGTH/2;
+                        }
+                    }
+
+                    
+        }
+    }
+}
+
+// renders a full stl objects data into the model
+int renderObj(block_t * blockInfo, const char* template, int templateSize, FILE* file) {
+    char obj[STL_TEMPLATE_MAX_LENGTH] = {0};
+    memcpy(obj, template, templateSize);
+    adjustObjPosition(obj, *blockInfo);
+    fwrite((void*) obj, sizeof(char), templateSize, file);
 }
 
 int generateSTLFromList(blockNode_t * blockList, char* fileName) {
@@ -153,48 +249,57 @@ int generateSTLFromList(blockNode_t * blockList, char* fileName) {
 
     while (current != NULL) {
         printf("rendering faces for block %d,%d,%d\n", current->info.x, current->info.y, current->info.z);
+        if (current->info.type == BLOCK_TYPE_BLOCK) {
+            if ((current->info.faces & BLOCK_FACE_PLUS_X) != 0) {
+                DEBUG("\trendering plus x face for block %d,%d,%d\n", current->info.x, current->info.y, current->info.z);
+                renderFace(current->info, STL_PLUS_X_FACE_BIN, tempFile);
+                faceCount += STL_TRIANGLES_PER_FACE;
+            }
 
-        if ((current->info.faces & BLOCK_FACE_PLUS_X) != 0) {
-            DEBUG("\trendering plus x face for block %d,%d,%d\n", current->info.x, current->info.y, current->info.z);
-            renderFace(current->info, STL_PLUS_X_FACE_BIN, tempFile);
-            faceCount++;
+            if ((current->info.faces & BLOCK_FACE_MINUS_X) != 0) {
+                DEBUG("\trendering minus x face for block %d,%d,%d\n", current->info.x, current->info.y, current->info.z);
+                renderFace(current->info, STL_MINUS_X_FACE_BIN, tempFile);
+                faceCount += STL_TRIANGLES_PER_FACE;
+            }
+
+            if ((current->info.faces & BLOCK_FACE_PLUS_Y) != 0) {
+                DEBUG("\trendering plus y face for block %d,%d,%d\n", current->info.x, current->info.y, current->info.z);
+                renderFace(current->info, STL_PLUS_Y_FACE_BIN, tempFile);
+                faceCount += STL_TRIANGLES_PER_FACE;
+            }
+
+            if ((current->info.faces & BLOCK_FACE_MINUS_Y) != 0) {
+                DEBUG("\trendering minus y face for block %d,%d,%d\n", current->info.x, current->info.y, current->info.z);
+                renderFace(current->info, STL_MINUS_Y_FACE_BIN, tempFile);
+                faceCount += STL_TRIANGLES_PER_FACE;
+            }
+
+            if ((current->info.faces & BLOCK_FACE_PLUS_Z) != 0) {
+                DEBUG("\trendering plus z face for block %d,%d,%d\n", current->info.x, current->info.y, current->info.z);
+                renderFace(current->info, STL_PLUS_Z_FACE_BIN, tempFile);
+                faceCount += STL_TRIANGLES_PER_FACE;
+            }
+
+            if ((current->info.faces & BLOCK_FACE_MINUS_Z) != 0) {
+                DEBUG("\trendering minus z face for block %d,%d,%d\n", current->info.x, current->info.y, current->info.z);
+                renderFace(current->info, STL_MINUS_Z_FACE_BIN, tempFile);
+                faceCount += STL_TRIANGLES_PER_FACE;
+            }
         }
-
-        if ((current->info.faces & BLOCK_FACE_MINUS_X) != 0) {
-            DEBUG("\trendering minus x face for block %d,%d,%d\n", current->info.x, current->info.y, current->info.z);
-            renderFace(current->info, STL_MINUS_X_FACE_BIN, tempFile);
-            faceCount++;
+        else if (current->info.type == BLOCK_TYPE_SLAB_BOT || current->info.type == BLOCK_TYPE_SLAB_TOP) {
+            faceCount += renderObj(&current->info, STL_MC_SLAB, sizeof(STL_MC_SLAB),tempFile);
         }
+        else if (current->info.type == BLOCK_TYPE_STAIRS_BOT || current->info.type == BLOCK_TYPE_STAIRS_TOP) {
+            faceCount += renderObj(&current->info, STL_MC_STAIRS, sizeof(STL_MC_STAIRS), tempFile);
 
-        if ((current->info.faces & BLOCK_FACE_PLUS_Y) != 0) {
-            DEBUG("\trendering plus y face for block %d,%d,%d\n", current->info.x, current->info.y, current->info.z);
-            renderFace(current->info, STL_PLUS_Y_FACE_BIN, tempFile);
-            faceCount++;
         }
-
-        if ((current->info.faces & BLOCK_FACE_MINUS_Y) != 0) {
-            DEBUG("\trendering minus y face for block %d,%d,%d\n", current->info.x, current->info.y, current->info.z);
-            renderFace(current->info, STL_MINUS_Y_FACE_BIN, tempFile);
-            faceCount++;
-        }
-
-        if ((current->info.faces & BLOCK_FACE_PLUS_Z) != 0) {
-            DEBUG("\trendering plus z face for block %d,%d,%d\n", current->info.x, current->info.y, current->info.z);
-            renderFace(current->info, STL_PLUS_Z_FACE_BIN, tempFile);
-            faceCount++;
-        }
-
-        if ((current->info.faces & BLOCK_FACE_MINUS_Z) != 0) {
-            DEBUG("\trendering minus z face for block %d,%d,%d\n", current->info.x, current->info.y, current->info.z);
-            renderFace(current->info, STL_MINUS_Z_FACE_BIN, tempFile);
-            faceCount++;
+        else {
+            printf("errant block type found: %d, skipping...\n", current->info.faces);
         }
 
         current = current->next;
  
     }
-
-    faceCount *= 2;
 
     fwrite(&faceCount, sizeof(faceCount), 1, file);
 
