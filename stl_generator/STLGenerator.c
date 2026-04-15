@@ -179,24 +179,130 @@ void renderFace(block_t blockInfo, const char* template, FILE* file) {
     fwrite((void*) face, sizeof(char), sizeof(face), file);
 }
 
+void rotateObj(char* obj, int numTriangles, int axis) {
+    triangle_t* triangles = (triangle_t *) obj;
+
+    for(int i = 0; i < numTriangles; i++ ){ 
+        //rotate the coordinates 90 degrees clockwise
+        float temp = 0;
+        for (int j = 0; j < STL_NUM_TRIANGLE_VERTICIES; j++ ){
+            switch (axis) {
+                case ROTATION_AXIS_X:
+                    temp = -1.0 * triangles[i].verticies[j][1];
+                    triangles[i].verticies[j][1] = triangles[i].verticies[j][2];
+                    triangles[i].verticies[j][2] = temp;
+
+                    // 0.5 used here to eliminate floating point approximation errors
+                    if (triangles[i].normalVec[1] > 0.5) {
+                        triangles[i].normalVec[1] = 0;
+                        triangles[i].normalVec[2] = -1.0;
+                    }
+
+                    if (triangles[i].normalVec[1] < -0.5) {
+                        triangles[i].normalVec[1] = 0;
+                        triangles[i].normalVec[2] = 1.0;
+                    }
+
+                    if (triangles[i].normalVec[2] > 0.5) {
+                        triangles[i].normalVec[2] = 0;
+                        triangles[i].normalVec[1] = -1.0;
+                    }
+
+                    if (triangles[i].normalVec[2] < -0.5) {
+                        triangles[i].normalVec[2] = 0;
+                        triangles[i].normalVec[1] = 1.0;
+                    }
+                    
+                    break;
+                case ROTATION_AXIS_Y:
+                    temp = -1.0 * triangles[i].verticies[j][2];
+                    triangles[i].verticies[j][2] = triangles[i].verticies[j][0];
+                    triangles[i].verticies[j][0] = temp;
+
+                    // 0.5 used here to eliminate floating point approximation errors
+                    if (triangles[i].normalVec[0] > 0.5) {
+                        triangles[i].normalVec[0] = 0;
+                        triangles[i].normalVec[2] = -1.0;
+                    }
+
+                    if (triangles[i].normalVec[0] < -0.5) {
+                        triangles[i].normalVec[0] = 0;
+                        triangles[i].normalVec[2] = 1.0;
+                    }
+
+                    if (triangles[i].normalVec[2] > 0.5) {
+                        triangles[i].normalVec[2] = 0;
+                        triangles[i].normalVec[0] = -1.0;
+                    }
+
+                    if (triangles[i].normalVec[2] < -0.5) {
+                        triangles[i].normalVec[2] = 0;
+                        triangles[i].normalVec[0] = 1.0;
+                    }
+
+                    break;
+                case ROTATION_AXIS_Z:
+                    temp = -1.0 * triangles[i].verticies[j][0];
+                    triangles[i].verticies[j][0] = triangles[i].verticies[j][1];
+                    triangles[i].verticies[j][1] = temp;
+
+                    // 0.5 used here to eliminate floating point approximation errors
+                    if (triangles[i].normalVec[0] > 0.5) {
+                        triangles[i].normalVec[0] = 0;
+                        triangles[i].normalVec[1] = -1.0;
+                    }
+
+                    if (triangles[i].normalVec[0] < -0.5) {
+                        triangles[i].normalVec[0] = 0;
+                        triangles[i].normalVec[1] = 1.0;
+                    }
+
+                    if (triangles[i].normalVec[1] > 0.5) {
+                        triangles[i].normalVec[1] = 0;
+                        triangles[i].normalVec[0] = -1.0;
+                    }
+
+                    if (triangles[i].normalVec[1] < -0.5) {
+                        triangles[i].normalVec[1] = 0;
+                        triangles[i].normalVec[0] = 1.0;
+                    }
+
+                    break;
+            }        
+        }
+        
+
+    }
+}
+
+void rotateObjMulti(char* obj, int numTriangles, int axis, int rotations) {
+    for (int i = 0; i < rotations; i++) {
+        rotateObj(obj, numTriangles, axis);
+    }
+
+}
+
 void adjustObjPosition(char* obj, block_t blockInfo ){
 
     triangle_t* triangles = (triangle_t* ) obj;
 
     if(blockInfo.type == BLOCK_TYPE_STAIRS_TOP || BLOCK_TYPE_STAIRS_BOT) {
         for (int i = 0; i < STL_MC_STAIRS_NUM_TRIANGLES; i++) {
+            
+            if(blockInfo.faces != BLOCK_TYPE_SLAB_TOP) {
+                //TODO: rotate
+            }
+
+            if(blockInfo.type == BLOCK_TYPE_STAIRS_BOT) {
+                rotateObjMulti(obj, STL_MC_STAIRS_NUM_TRIANGLES, 1, ROTATION_AXIS_X);
+            }
+
             for(int j = 0; j < STL_NUM_TRIANGLE_VERTICIES; j++) {
                 triangles[i].verticies[j][0] += blockInfo.x * STL_EDGE_LENGTH;
                 triangles[i].verticies[j][1] += blockInfo.y * STL_EDGE_LENGTH;
                 triangles[i].verticies[j][2] += blockInfo.z * STL_EDGE_LENGTH;
 
-                if(blockInfo.faces != BLOCK_FACE_MINUS_Y) {
-                    //TODO: rotate
-                }
-
-                if(blockInfo.type == BLOCK_TYPE_STAIRS_TOP) {
-                    //TODO: Rotate
-                }
+                
             }
         }    
     }
@@ -221,9 +327,10 @@ void adjustObjPosition(char* obj, block_t blockInfo ){
 // renders a full stl objects data into the model
 int renderObj(block_t * blockInfo, const char* template, int templateSize, FILE* file) {
     char obj[STL_TEMPLATE_MAX_LENGTH] = {0};
-    memcpy(obj, template, templateSize);
+    memcpy(&obj[0], &template[0], templateSize);
     adjustObjPosition(obj, *blockInfo);
     fwrite((void*) obj, sizeof(char), templateSize, file);
+    return templateSize / sizeof(triangle_t);
 }
 
 int generateSTLFromList(blockNode_t * blockList, char* fileName) {
@@ -248,8 +355,8 @@ int generateSTLFromList(blockNode_t * blockList, char* fileName) {
     unsigned int faceCount = 0;
 
     while (current != NULL) {
-        printf("rendering faces for block %d,%d,%d\n", current->info.x, current->info.y, current->info.z);
         if (current->info.type == BLOCK_TYPE_BLOCK) {
+            printf("rendering faces for block %d,%d,%d\n", current->info.x, current->info.y, current->info.z);
             if ((current->info.faces & BLOCK_FACE_PLUS_X) != 0) {
                 DEBUG("\trendering plus x face for block %d,%d,%d\n", current->info.x, current->info.y, current->info.z);
                 renderFace(current->info, STL_PLUS_X_FACE_BIN, tempFile);
@@ -287,9 +394,13 @@ int generateSTLFromList(blockNode_t * blockList, char* fileName) {
             }
         }
         else if (current->info.type == BLOCK_TYPE_SLAB_BOT || current->info.type == BLOCK_TYPE_SLAB_TOP) {
+            printf("rendering slab obj at: %d,%d,%d\n", current->info.x, current->info.y, current->info.z);
+
             faceCount += renderObj(&current->info, STL_MC_SLAB, sizeof(STL_MC_SLAB),tempFile);
         }
         else if (current->info.type == BLOCK_TYPE_STAIRS_BOT || current->info.type == BLOCK_TYPE_STAIRS_TOP) {
+            printf("rendering stairs obj at: %d,%d,%d\n", current->info.x, current->info.y, current->info.z);
+
             faceCount += renderObj(&current->info, STL_MC_STAIRS, sizeof(STL_MC_STAIRS), tempFile);
 
         }

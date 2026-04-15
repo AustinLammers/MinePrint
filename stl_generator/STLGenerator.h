@@ -54,6 +54,10 @@
 #define BLOCK_TYPE_SLAB_BOT 3
 #define BLOCK_TYPE_SLAB_TOP 4
 
+#define ROTATION_AXIS_X 0
+#define ROTATION_AXIS_Y 1
+#define ROTATION_AXIS_Z 2
+
 /* Structure to hold information about a block's position and faces */
 typedef struct {
     char blockName[MAX_BLOCK_ID_LENGTH];
