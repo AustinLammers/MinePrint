@@ -1,0 +1,1 @@
+STL file generator that can help introduce young students to 3D model generation. This tool allows users to generate an STL file of their Minecraft builds for later use in 3D printing or other modeling applications.
